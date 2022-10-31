@@ -1,11 +1,11 @@
 from tkinter import *
 import numpy as np
-from itertools import permutations, combinations
+from itertools import combinations
 from time import time
 from random import random
 
 #Paramètres
-taille_plateau=20
+taille_plateau=10
 hauteur=800
 taux_remplissage=0.6
 largeur=hauteur
@@ -255,7 +255,7 @@ def jeu(source,plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_
 			break
 
 		comparaison = source==plateau
-	print("Résolution effectuée en {}".format(round(time()- debut,3)))
+	print("Résolution effectuée en {} secondes".format(round(time()- debut,3)))
 
 	if not comparaison.all():
 		print("La solution n'a pas été trouvée")
