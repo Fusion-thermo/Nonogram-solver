@@ -5,7 +5,7 @@ from time import time
 from random import random
 
 #Paramètres
-taille_plateau=10
+taille_plateau=15
 hauteur=800
 taux_remplissage=0.6
 largeur=hauteur
@@ -258,7 +258,7 @@ def jeu(source,plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_
 	print("Résolution effectuée en {} secondes".format(round(time()- debut,3)))
 
 	if not comparaison.all():
-		print("La solution n'a pas été trouvée")
+		print("Il y a plusieurs solutions équivalentes possibles")
 	else:
 		print("Solution trouvée !")
 
