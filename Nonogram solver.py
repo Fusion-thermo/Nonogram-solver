@@ -3,11 +3,7 @@ import numpy as np
 from itertools import combinations
 from time import time
 from random import random
-
-"""
-résoudre depuis csv
-
-"""
+import os
 
 #Paramètres
 hauteur=800
@@ -18,7 +14,7 @@ origine_y=hauteur//2
 
 def initialisation(rien):
 	global taille_plateau, taux_remplissage, x0, y0, taille_case
-	taille_plateau=int(plateau.get())
+	taille_plateau=int(plateau_taille_var.get())
 	taux_remplissage=float(densite.get())
 	taille_case=0.7 * hauteur//taille_plateau
 	#coin supérieur gauche du plateau
@@ -38,47 +34,92 @@ def initialisation_plateau():
 	Canevas.delete(ALL)
 
 	#source=np.random.randint(1,3,size=(taille_plateau,taille_plateau))
-	plateau=np.zeros(shape=(taille_plateau,taille_plateau))
-	source=np.zeros(shape=(taille_plateau,taille_plateau))
-	for i in range(taille_plateau):
-		for j in range(taille_plateau):
-			if random()<taux_remplissage:
-				source[i,j]=1
-			else:
-				source[i,j]=2
-
-
-	indices_lignes=[]
-	for row in range(1,source.shape[1]+1):
-		nb=0
-		indice=[]
-		for i in source[row-1:row, :][0]:
-			if i==1:
-				nb+=1
-			elif i==2 and nb>0:
+	if fichier_var.get()=="1":
+		plateau=np.zeros(shape=(taille_plateau,taille_plateau))
+		source=np.zeros(shape=(taille_plateau,taille_plateau))
+		for i in range(taille_plateau):
+			for j in range(taille_plateau):
+				if random()<taux_remplissage:
+					source[i,j]=1
+				else:
+					source[i,j]=2
+	
+		indices_lignes=[]
+		for row in range(1,source.shape[1]+1):
+			nb=0
+			indice=[]
+			for i in source[row-1:row, :][0]:
+				if i==1:
+					nb+=1
+				elif i==2 and nb>0:
+					indice.append(nb)
+					nb=0
+			if nb>0:
 				indice.append(nb)
-				nb=0
-		if nb>0:
-			indice.append(nb)
-		if indice==[]:
-			indice=[0]
-		indices_lignes.append(indice)
+			if indice==[]:
+				indice=[0]
+			indices_lignes.append(indice)
 
-	indices_colonnes=[]
-	for column in range(1,source.shape[0]+1):
-		nb=0
-		indice=[]
-		for i in source[:, column-1:column]:
-			if i[0]==1:
-				nb+=1
-			elif i[0]==2 and nb>0:
+		indices_colonnes=[]
+		for column in range(1,source.shape[0]+1):
+			nb=0
+			indice=[]
+			for i in source[:, column-1:column]:
+				if i[0]==1:
+					nb+=1
+				elif i[0]==2 and nb>0:
+					indice.append(nb)
+					nb=0
+			if nb>0:
 				indice.append(nb)
-				nb=0
-		if nb>0:
-			indice.append(nb)
-		if indice==[]:
-			indice=[0]
-		indices_colonnes.append(indice)
+			if indice==[]:
+				indice=[0]
+			indices_colonnes.append(indice)
+	else:
+		path=os.path.realpath(__file__)
+		fin=-1
+		while path[fin]!="\\":
+			fin-=1
+
+		with open(path[:fin+1]+"Lines.csv") as fichier:
+			lignes=fichier.read()
+		if "," in lignes:
+			lignes=lignes.replace(",",";")
+		indices_lignes=[]
+		lignes=lignes.split("\n")
+		for ligne in lignes:
+			if ";" not in ligne:
+				continue
+			indice=[]
+			for symbole in ligne:
+				if symbole!=";":
+					indice.append(int(symbole))
+			if indice==[]:
+				indice=[0]
+			indices_lignes.append(indice[:])
+
+		plateau_taille_var.set(len(indices_lignes))
+		densite.set(sum(sum(i for i in ligne) for ligne in indices_lignes)/len(indices_lignes)**2)
+		initialisation(1)
+		plateau=np.zeros(shape=(taille_plateau,taille_plateau))
+		source=np.zeros(shape=(taille_plateau,taille_plateau))
+
+		with open(path[:fin+1]+"Columns.csv") as fichier:
+			colonnes=fichier.read()
+		if "," in colonnes:
+			colonnes=colonnes.replace(",",";")
+		indices_colonnes=[]
+		colonnes=colonnes.split("\n")
+		for colonne in colonnes:
+			if ";" not in colonne:
+				continue
+			indice=[]
+			for symbole in colonne:
+				if symbole!=";":
+					indice.append(int(symbole))
+			if indice==[]:
+				indice=[0]
+			indices_colonnes.append(indice[:])
 	
 	#affichage
 	for i in range(len(indices_lignes)):
@@ -94,7 +135,7 @@ def initialisation_plateau():
 	print("Initialisation effectuée en {} secondes.".format(round(time()-debut,3)))
 	temps_initialisation.set("Initialisé en\n"+str(round(time()-debut,3))+" s")
 
-	return source,plateau,pos_init_lignes,pos_init_colonnes
+	return plateau,pos_init_lignes,pos_init_colonnes
 
 def decompose(number):
 	# returns a generator of tuples (m, n1, r)
@@ -266,26 +307,25 @@ def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 	return plateau
 
 
-def jeu(source,plateau,pos_init_lignes,pos_init_colonnes):
+def jeu(plateau,pos_init_lignes,pos_init_colonnes):
 	debut=time()
-	comparaison=source==plateau
 	plateaux=[]
-	while not comparaison.all():
+	diff=plateau
+	while not diff.all():
+		plateaux.append(np.copy(plateau))
 		precedent=np.copy(plateau)
 		plateau=solveur(plateau,pos_init_lignes,pos_init_colonnes)
 		diff=plateau==precedent
-		#si plus de modification
-		if diff.all():
-			break
-		else:
-			plateaux.append(np.copy(plateau))
 
 
-		comparaison = source==plateau
 	print("Résolution effectuée en {} secondes".format(round(time()- debut,3)))
 	temps_resolution.set("Résolu en\n"+str(round(time()-debut,3))+" s")
 
-	if not comparaison.all():
+	if np.count_nonzero(plateau == 0) >0:
+		complet=False
+	else:
+		complet=True
+	if not complet:
 		print("Il y a plusieurs solutions équivalentes possibles\n\n")
 	else:
 		print("Solution trouvée !\n\n")
@@ -342,8 +382,8 @@ def dessin_etape_unique(numero):
 
 def main():
 	global plateaux,copie_plateau
-	source,plateau,pos_init_lignes,pos_init_colonnes=initialisation_plateau()
-	plateaux,copie_plateau=jeu(source,plateau,pos_init_lignes,pos_init_colonnes)
+	plateau,pos_init_lignes,pos_init_colonnes=initialisation_plateau()
+	plateaux,copie_plateau=jeu(plateau,pos_init_lignes,pos_init_colonnes)
 	scale_etape.config(to=len(plateaux))
 	if int(etapes.get())==2:
 		dessin(plateaux[-1])
@@ -355,21 +395,29 @@ fenetre=Tk()
 Canevas=Canvas(fenetre,height=hauteur,width=largeur)
 Canevas.pack(padx=5,pady=5,side=LEFT)
 
-Bouton1 = Button(fenetre,  text = 'Quitter',  command = fenetre.destroy)
-Bouton1.pack()
+fichier_var=StringVar()
+fichier_var.set(1)
+Choix1=Radiobutton(fenetre, text="Aléatoire",variable=fichier_var, value=1)
+Choix2=Radiobutton(fenetre, text="Fichier",variable=fichier_var, value=2)
+Choix1.pack()
+Choix2.pack()
 
 Reset_bouton = Button(fenetre,  text = 'Démarrer',  command = main)
 Reset_bouton.pack()
 
-plateau=StringVar()
-plateau.set(15)
-plateau_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=25,  resolution=1, tickinterval=13,  label='Taille du plateau',  variable=plateau, command=initialisation)
+plateau_taille_var=StringVar()
+plateau_taille_var.set(15)
+plateau_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=25,  resolution=1, tickinterval=13,  label='Taille du plateau',  variable=plateau_taille_var, command=initialisation)
 plateau_scale.pack(side="top")
 
 densite=StringVar()
 densite.set(0.6)
 densite_scale=Scale(fenetre,  orient='horizontal',  from_=0.1,  to=0.9,  resolution=0.1, tickinterval=0.4,  label='Densité',  variable=densite, command=initialisation)
 densite_scale.pack(side="top")
+
+warning=StringVar()
+warning.set("")
+Label(fenetre,textvariable=warning).pack()
 
 etapes=StringVar()
 etapes.set(1)
@@ -380,12 +428,11 @@ Choix2.pack()
 
 voir_etapes=StringVar()
 voir_etapes.set(2)
-scale_etape=Scale(fenetre,  orient='horizontal',  from_=1,  to=2,  resolution=1, tickinterval=2,  label='Voir une étape',  variable=voir_etapes, command=dessin_etape_unique)
+scale_etape=Scale(fenetre,  orient='horizontal',  from_=1,  to=2,  resolution=1, tickinterval=2,  label='Voir une étape :',  variable=voir_etapes, command=dessin_etape_unique)
 scale_etape.pack(side="top")
 
-warning=StringVar()
-warning.set("")
-Label(fenetre,textvariable=warning).pack()
+Bouton1 = Button(fenetre,  text = 'Quitter',  command = fenetre.destroy)
+Bouton1.pack()
 
 temps_initialisation=StringVar()
 temps_initialisation.set("")
