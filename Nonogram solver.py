@@ -4,23 +4,38 @@ from itertools import combinations
 from time import time
 from random import random
 
+"""
+résoudre depuis csv
+
+"""
+
 #Paramètres
-taille_plateau=15
 hauteur=800
-taux_remplissage=0.6
 largeur=hauteur
-taille_case=0.7 * hauteur//taille_plateau
 origine_x=largeur//2
 origine_y=hauteur//2
-#coin supérieur gauche du plateau
-x0=origine_x-taille_plateau*taille_case/2
-y0=origine_y-taille_plateau*taille_case/2
 
 
+def initialisation(rien):
+	global taille_plateau, taux_remplissage, x0, y0, taille_case
+	taille_plateau=int(plateau.get())
+	taux_remplissage=float(densite.get())
+	taille_case=0.7 * hauteur//taille_plateau
+	#coin supérieur gauche du plateau
+	x0=origine_x-taille_plateau*taille_case/2
+	y0=origine_y-taille_plateau*taille_case/2
+	if taille_plateau/taux_remplissage>=30:
+		warning.set("Attention !")
+	else:
+		warning.set("")
 
-#Initialisation
-def initialisation():
+#initialisation_plateau
+def initialisation_plateau():
+	global indices_lignes,indices_colonnes
 	debut=time()
+	temps_initialisation.set("")
+	temps_resolution.set("")
+	Canevas.delete(ALL)
 
 	#source=np.random.randint(1,3,size=(taille_plateau,taille_plateau))
 	plateau=np.zeros(shape=(taille_plateau,taille_plateau))
@@ -64,13 +79,22 @@ def initialisation():
 		if indice==[]:
 			indice=[0]
 		indices_colonnes.append(indice)
+	
+	#affichage
+	for i in range(len(indices_lignes)):
+		for j in range(len(indices_lignes[i])):
+			Canevas.create_text(x0 -14*(len(indices_lignes[i])-j), y0 + i*taille_case + taille_case/2,text=str(indices_lignes[i][j]))
+	for i in range(len(indices_colonnes)):
+		for j in range(len(indices_colonnes[i])):
+			Canevas.create_text(x0 + taille_case/2 + i*taille_case, y0 -14*(len(indices_colonnes[i])-j),text=str(indices_colonnes[i][j]))
 
 	pos_init_lignes=[positions_initiales_possibles(i,source.shape[1]) for i in indices_lignes]
 	pos_init_colonnes=[positions_initiales_possibles(i,source.shape[0]) for i in indices_colonnes]
 
 	print("Initialisation effectuée en {} secondes.".format(round(time()-debut,3)))
+	temps_initialisation.set("Initialisé en\n"+str(round(time()-debut,3))+" s")
 
-	jeu(source,plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_colonnes)
+	return source,plateau,pos_init_lignes,pos_init_colonnes
 
 def decompose(number):
 	# returns a generator of tuples (m, n1, r)
@@ -169,7 +193,7 @@ def positions_initiales_possibles(indice, longueur_ligne):
 	return chaines
 
 
-def solveur(plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_colonnes):
+def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 	'''
 	0 : inconnu
 	1 : plein
@@ -242,42 +266,89 @@ def solveur(plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_col
 	return plateau
 
 
-
-def jeu(source,plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_colonnes):
+def jeu(source,plateau,pos_init_lignes,pos_init_colonnes):
 	debut=time()
 	comparaison=source==plateau
+	plateaux=[]
 	while not comparaison.all():
 		precedent=np.copy(plateau)
-		plateau=solveur(plateau,indices_lignes,indices_colonnes,pos_init_lignes,pos_init_colonnes)
+		plateau=solveur(plateau,pos_init_lignes,pos_init_colonnes)
 		diff=plateau==precedent
 		#si plus de modification
 		if diff.all():
 			break
+		else:
+			plateaux.append(np.copy(plateau))
+
 
 		comparaison = source==plateau
 	print("Résolution effectuée en {} secondes".format(round(time()- debut,3)))
+	temps_resolution.set("Résolu en\n"+str(round(time()-debut,3))+" s")
 
 	if not comparaison.all():
-		print("Il y a plusieurs solutions équivalentes possibles")
+		print("Il y a plusieurs solutions équivalentes possibles\n\n")
 	else:
-		print("Solution trouvée !")
+		print("Solution trouvée !\n\n")
 
-	#affichage
-	for row in range(1,plateau.shape[1]+1):
+	return plateaux, plateaux[:]
+
+def dessin(plateau):
+	for row in range(0,plateau.shape[1]):
 		for column in range(0,plateau.shape[0]):
-			if plateau[row-1,column]==0:
+			if plateau[row,column]==0:
 				couleur="white"
-			elif plateau[row-1,column]==2:
+			elif plateau[row,column]==2:
 				couleur="red"
 			else:
 				couleur="black"
-			Canevas.create_rectangle(x0+column*taille_case,y0+(row-1)*taille_case,x0+taille_case+column*taille_case,y0+taille_case+(row-1)*taille_case,fill=couleur)
+			Canevas.create_rectangle(x0+column*taille_case,y0+row*taille_case,x0+taille_case+column*taille_case,y0+taille_case+row*taille_case,fill=couleur)
+
+def dessin_etapes():
+	global plateaux
+	recursif = fenetre.after(300,dessin_etapes)
+	plateau=plateaux[0]
+	for row in range(0,plateau.shape[1]):
+		for column in range(0,plateau.shape[0]):
+			if plateau[row,column]==0:
+				couleur="white"
+			elif plateau[row,column]==2:
+				couleur="red"
+			else:
+				couleur="black"
+			Canevas.create_rectangle(x0+column*taille_case,y0+row*taille_case,x0+taille_case+column*taille_case,y0+taille_case+row*taille_case,fill=couleur)
+	if len(plateaux)>1:
+		plateaux.remove(plateau)
+	else:
+		fenetre.after_cancel(recursif)
+
+def dessin_etape_unique(numero):
+	plateau=copie_plateau[int(numero)-1]
+	Canevas.delete(ALL)
+	for row in range(0,plateau.shape[1]):
+		for column in range(0,plateau.shape[0]):
+			if plateau[row,column]==0:
+				couleur="white"
+			elif plateau[row,column]==2:
+				couleur="red"
+			else:
+				couleur="black"
+			Canevas.create_rectangle(x0+column*taille_case,y0+row*taille_case,x0+taille_case+column*taille_case,y0+taille_case+row*taille_case,fill=couleur)
 	for i in range(len(indices_lignes)):
 		for j in range(len(indices_lignes[i])):
 			Canevas.create_text(x0 -14*(len(indices_lignes[i])-j), y0 + i*taille_case + taille_case/2,text=str(indices_lignes[i][j]))
 	for i in range(len(indices_colonnes)):
 		for j in range(len(indices_colonnes[i])):
 			Canevas.create_text(x0 + taille_case/2 + i*taille_case, y0 -14*(len(indices_colonnes[i])-j),text=str(indices_colonnes[i][j]))
+
+def main():
+	global plateaux,copie_plateau
+	source,plateau,pos_init_lignes,pos_init_colonnes=initialisation_plateau()
+	plateaux,copie_plateau=jeu(source,plateau,pos_init_lignes,pos_init_colonnes)
+	scale_etape.config(to=len(plateaux))
+	if int(etapes.get())==2:
+		dessin(plateaux[-1])
+	else:
+		dessin_etapes()
 
 
 fenetre=Tk()
@@ -287,6 +358,43 @@ Canevas.pack(padx=5,pady=5,side=LEFT)
 Bouton1 = Button(fenetre,  text = 'Quitter',  command = fenetre.destroy)
 Bouton1.pack()
 
-initialisation()
+Reset_bouton = Button(fenetre,  text = 'Démarrer',  command = main)
+Reset_bouton.pack()
+
+plateau=StringVar()
+plateau.set(15)
+plateau_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=25,  resolution=1, tickinterval=13,  label='Taille du plateau',  variable=plateau, command=initialisation)
+plateau_scale.pack(side="top")
+
+densite=StringVar()
+densite.set(0.6)
+densite_scale=Scale(fenetre,  orient='horizontal',  from_=0.1,  to=0.9,  resolution=0.1, tickinterval=0.4,  label='Densité',  variable=densite, command=initialisation)
+densite_scale.pack(side="top")
+
+etapes=StringVar()
+etapes.set(1)
+Choix1=Radiobutton(fenetre, text="Afficher les étapes",variable=etapes, value=1)
+Choix2=Radiobutton(fenetre, text="Ne pas afficher les étapes",variable=etapes, value=2)
+Choix1.pack()
+Choix2.pack()
+
+voir_etapes=StringVar()
+voir_etapes.set(2)
+scale_etape=Scale(fenetre,  orient='horizontal',  from_=1,  to=2,  resolution=1, tickinterval=2,  label='Voir une étape',  variable=voir_etapes, command=dessin_etape_unique)
+scale_etape.pack(side="top")
+
+warning=StringVar()
+warning.set("")
+Label(fenetre,textvariable=warning).pack()
+
+temps_initialisation=StringVar()
+temps_initialisation.set("")
+Label(fenetre,textvariable=temps_initialisation).pack()
+
+temps_resolution=StringVar()
+temps_resolution.set("")
+Label(fenetre,textvariable=temps_resolution).pack()
+
+initialisation(0)
 
 fenetre.mainloop()
