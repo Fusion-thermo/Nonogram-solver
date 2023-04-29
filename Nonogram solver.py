@@ -427,7 +427,7 @@ Choix1.pack()
 Choix2.pack()
 
 voir_etapes=StringVar()
-voir_etapes.set(2)
+voir_etapes.set(1)
 scale_etape=Scale(fenetre,  orient='horizontal',  from_=1,  to=2,  resolution=1, tickinterval=2,  label='Voir une étape :',  variable=voir_etapes, command=dessin_etape_unique)
 scale_etape.pack(side="top")
 
