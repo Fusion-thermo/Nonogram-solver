@@ -77,9 +77,7 @@ def initialisation_plateau():
 			indices_colonnes.append(indice)
 	else:
 		path=os.path.realpath(__file__)
-		fin=-1
-		while path[fin]!="\\":
-			fin-=1
+		fin=path.rfind('\\')
 
 		with open(path[:fin+1]+"Lines.csv") as fichier:
 			lignes=fichier.read()
