@@ -5,22 +5,27 @@ from time import time
 from random import random
 import os
 
-#Paramètres
-hauteur=800
-largeur=hauteur
-origine_x=largeur//2
-origine_y=hauteur//2
+#Paramètres fenetre
+fenetre_hauteur=800
+fenetre_largeur=fenetre_hauteur
+origine_x=fenetre_largeur//2
+origine_y=fenetre_hauteur//2
 
 
 def initialisation(rien):
-	global taille_plateau, taux_remplissage, x0, y0, taille_case
-	taille_plateau=int(plateau_taille_var.get())
+	global hauteur_plateau, largeur_plateau, taux_remplissage, x0, y0, taille_case
+	largeur_plateau=int(plateau_largeur_var.get())
+	hauteur_plateau=int(plateau_hauteur_var.get())
 	taux_remplissage=float(densite.get())
-	taille_case=0.7 * hauteur//taille_plateau
+	if largeur_plateau>hauteur_plateau:
+		taille_max=largeur_plateau
+	else:
+		taille_max=hauteur_plateau
+	taille_case=0.7 * fenetre_hauteur//taille_max
 	#coin supérieur gauche du plateau
-	x0=origine_x-taille_plateau*taille_case/2
-	y0=origine_y-taille_plateau*taille_case/2
-	if taille_plateau/taux_remplissage>=30:
+	x0=origine_x-largeur_plateau*taille_case/2
+	y0=origine_y-hauteur_plateau*taille_case/2
+	if taux_remplissage<0.6:
 		warning.set("Attention !")
 	else:
 		warning.set("")
@@ -33,19 +38,18 @@ def initialisation_plateau():
 	temps_resolution.set("")
 	Canevas.delete(ALL)
 
-	#source=np.random.randint(1,3,size=(taille_plateau,taille_plateau))
 	if fichier_var.get()=="1":
-		plateau=np.zeros(shape=(taille_plateau,taille_plateau))
-		source=np.zeros(shape=(taille_plateau,taille_plateau))
-		for i in range(taille_plateau):
-			for j in range(taille_plateau):
+		plateau=np.zeros(shape=(hauteur_plateau,largeur_plateau))
+		source=np.zeros(shape=(hauteur_plateau,largeur_plateau))
+		for i in range(hauteur_plateau):
+			for j in range(largeur_plateau):
 				if random()<taux_remplissage:
 					source[i,j]=1
 				else:
 					source[i,j]=2
 	
 		indices_lignes=[]
-		for row in range(1,source.shape[1]+1):
+		for row in range(1,source.shape[0]+1):
 			nb=0
 			indice=[]
 			for i in source[row-1:row, :][0]:
@@ -61,7 +65,7 @@ def initialisation_plateau():
 			indices_lignes.append(indice)
 
 		indices_colonnes=[]
-		for column in range(1,source.shape[0]+1):
+		for column in range(1,source.shape[1]+1):
 			nb=0
 			indice=[]
 			for i in source[:, column-1:column]:
@@ -89,18 +93,12 @@ def initialisation_plateau():
 			if ";" not in ligne:
 				continue
 			indice=[]
-			for symbole in ligne:
-				if symbole!=";":
+			for symbole in ligne.split(';'):
+				if symbole!="":
 					indice.append(int(symbole))
 			if indice==[]:
 				indice=[0]
 			indices_lignes.append(indice[:])
-
-		plateau_taille_var.set(len(indices_lignes))
-		densite.set(sum(sum(i for i in ligne) for ligne in indices_lignes)/len(indices_lignes)**2)
-		initialisation(1)
-		plateau=np.zeros(shape=(taille_plateau,taille_plateau))
-		source=np.zeros(shape=(taille_plateau,taille_plateau))
 
 		with open(path[:fin+1]+"Columns.csv") as fichier:
 			colonnes=fichier.read()
@@ -112,12 +110,19 @@ def initialisation_plateau():
 			if ";" not in colonne:
 				continue
 			indice=[]
-			for symbole in colonne:
-				if symbole!=";":
+			for symbole in colonne.split(';'):
+				if symbole!="":
 					indice.append(int(symbole))
 			if indice==[]:
 				indice=[0]
 			indices_colonnes.append(indice[:])
+
+		plateau_hauteur_var.set(len(indices_lignes))
+		plateau_largeur_var.set(len(indices_colonnes))
+		densite.set(sum(sum(i for i in ligne) for ligne in indices_lignes)/(len(indices_lignes)*len(indices_colonnes)))
+		initialisation("rien")
+		plateau=np.zeros(shape=(hauteur_plateau,largeur_plateau))
+		source=np.zeros(shape=(hauteur_plateau,largeur_plateau))
 	
 	#affichage
 	for i in range(len(indices_lignes)):
@@ -175,18 +180,19 @@ def arrang(n, k):
     return x
 
 def positions_initiales_possibles(indice, longueur_ligne):
+	#si aucun bloc
 	if indice==[0]:
 		return ['0'*longueur_ligne]
 
-	#Ce qu'on peut directement en déduire
+	#Ordre des blocs
 	order=[]
 	for i in indice:
 		order.append([1]*i)
 		order.append([0])
 	order.pop()
-	nb_vides=longueur_ligne-(len(indice)-1)-sum(indice)
 
-	#s'il n'y a qu'une seule position possible
+	#s'il n'y a qu'une seule position possible : techniquement pas nécessaire
+	nb_vides=longueur_ligne-(len(indice)-1)-sum(indice)
 	if nb_vides==0:
 		chaine=""
 		for i in indice:
@@ -194,7 +200,6 @@ def positions_initiales_possibles(indice, longueur_ligne):
 			chaine+="0"
 		chaine=chaine[:-1]
 		return [chaine]
-
 
 	#Toutes les combinaisons possibles pour les 0, les nombres obtenus représentent le nombre de 0 libres à un seul endroit
 	#exemple : [3,1] signifie qu'on met trois 0 libres à un endroit et un 0 libre à un autre endroit.
@@ -240,7 +245,7 @@ def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 
 	'''
 	#lignes
-	for row in range(1,plateau.shape[1]+1):
+	for row in range(1,plateau.shape[0]+1):
 		#état actuel de la ligne
 		etat=""
 		for i in plateau[row-1:row,:][0]:
@@ -260,7 +265,7 @@ def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 		pos_init_lignes[row-1]=restant[:]
 		#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
 		#et si toutes prévoient 0 alors c'est un vide, marqué 2 sur le plateau.
-		probas=[0]*taille_plateau
+		probas=[0]*largeur_plateau
 		for combi in pos_init_lignes[row-1]:
 			for i in range(len(combi)):
 				probas[i]+=int(combi[i])
@@ -272,7 +277,7 @@ def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 
 
 	#colonnes
-	for column in range(1,plateau.shape[0]+1):
+	for column in range(1,plateau.shape[1]+1):
 		#état actuel de la ligne
 		etat=""
 		for i in plateau[:, column-1:column]:
@@ -291,7 +296,7 @@ def solveur(plateau,pos_init_lignes,pos_init_colonnes):
 					break
 		pos_init_colonnes[column-1]=restant[:]
 		#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
-		probas=[0]*taille_plateau
+		probas=[0]*hauteur_plateau
 		for combi in pos_init_colonnes[column-1]:
 			for i in range(len(combi)):
 				if combi[i]=="1":
@@ -331,8 +336,8 @@ def jeu(plateau,pos_init_lignes,pos_init_colonnes):
 	return plateaux, plateaux[:]
 
 def dessin(plateau):
-	for row in range(0,plateau.shape[1]):
-		for column in range(0,plateau.shape[0]):
+	for row in range(0,plateau.shape[0]):
+		for column in range(0,plateau.shape[1]):
 			if plateau[row,column]==0:
 				couleur="white"
 			elif plateau[row,column]==2:
@@ -345,8 +350,8 @@ def dessin_etapes():
 	global plateaux
 	recursif = fenetre.after(300,dessin_etapes)
 	plateau=plateaux[0]
-	for row in range(0,plateau.shape[1]):
-		for column in range(0,plateau.shape[0]):
+	for row in range(0,plateau.shape[0]):
+		for column in range(0,plateau.shape[1]):
 			if plateau[row,column]==0:
 				couleur="white"
 			elif plateau[row,column]==2:
@@ -362,8 +367,8 @@ def dessin_etapes():
 def dessin_etape_unique(numero):
 	plateau=copie_plateau[int(numero)-1]
 	Canevas.delete(ALL)
-	for row in range(0,plateau.shape[1]):
-		for column in range(0,plateau.shape[0]):
+	for row in range(0,plateau.shape[0]):
+		for column in range(0,plateau.shape[1]):
 			if plateau[row,column]==0:
 				couleur="white"
 			elif plateau[row,column]==2:
@@ -390,11 +395,11 @@ def main():
 
 
 fenetre=Tk()
-Canevas=Canvas(fenetre,height=hauteur,width=largeur)
+Canevas=Canvas(fenetre,height=fenetre_hauteur,width=fenetre_largeur)
 Canevas.pack(padx=5,pady=5,side=LEFT)
 
 fichier_var=StringVar()
-fichier_var.set(1)
+fichier_var.set(2)
 Choix1=Radiobutton(fenetre, text="Aléatoire",variable=fichier_var, value=1)
 Choix2=Radiobutton(fenetre, text="Fichier",variable=fichier_var, value=2)
 Choix1.pack()
@@ -403,10 +408,15 @@ Choix2.pack()
 Reset_bouton = Button(fenetre,  text = 'Démarrer',  command = main)
 Reset_bouton.pack()
 
-plateau_taille_var=StringVar()
-plateau_taille_var.set(15)
-plateau_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=25,  resolution=1, tickinterval=13,  label='Taille du plateau',  variable=plateau_taille_var, command=initialisation)
-plateau_scale.pack(side="top")
+plateau_largeur_var=StringVar()
+plateau_largeur_var.set(15)
+plateau_largeur_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=30,  resolution=1, tickinterval=13,  label='Largeur du plateau',  variable=plateau_largeur_var, command=initialisation)
+plateau_largeur_scale.pack(side="top")
+
+plateau_hauteur_var=StringVar()
+plateau_hauteur_var.set(15)
+plateau_hauteur_scale=Scale(fenetre,  orient='horizontal',  from_=2,  to=30,  resolution=1, tickinterval=13,  label='Hauteur du plateau',  variable=plateau_hauteur_var, command=initialisation)
+plateau_hauteur_scale.pack(side="top")
 
 densite=StringVar()
 densite.set(0.6)
