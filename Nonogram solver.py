@@ -1,4 +1,5 @@
 from tkinter import *
+import tkinter.filedialog
 import numpy as np
 from itertools import combinations
 from time import time
@@ -32,7 +33,7 @@ def initialisation(rien):
 
 #initialisation_plateau
 def initialisation_plateau():
-	global indices_lignes,indices_colonnes
+	global indices_lignes,indices_colonnes, filename_lines,filename_columns
 	debut=time()
 	temps_initialisation.set("")
 	temps_resolution.set("")
@@ -80,10 +81,10 @@ def initialisation_plateau():
 				indice=[0]
 			indices_colonnes.append(indice)
 	else:
-		path=os.path.realpath(__file__)
-		fin=path.rfind('\\')
+		#path=os.path.realpath(__file__)
+		#fin=path.rfind('\\')
 
-		with open(path[:fin+1]+"Lines.csv") as fichier:
+		with open(filename_lines) as fichier:
 			lignes=fichier.read()
 		if "," in lignes:
 			lignes=lignes.replace(",",";")
@@ -100,7 +101,7 @@ def initialisation_plateau():
 				indice=[0]
 			indices_lignes.append(indice[:])
 
-		with open(path[:fin+1]+"Columns.csv") as fichier:
+		with open(filename_columns) as fichier:
 			colonnes=fichier.read()
 		if "," in colonnes:
 			colonnes=colonnes.replace(",",";")
@@ -139,6 +140,23 @@ def initialisation_plateau():
 	temps_initialisation.set("Initialisé en\n"+str(round(time()-debut,3))+" s")
 
 	return plateau,pos_init_lignes,pos_init_colonnes
+
+def choix_fichier_lignes():
+	global filename_lines
+	filename_lines = tkinter.filedialog.askopenfilename(title="Ouvrir une image",filetypes=[('csv files','.csv'),('all files','.*')])
+	debut=-1
+	while filename_lines[debut] != "/":
+		debut-=1
+	text_line.set(filename_lines[debut+1:])
+
+def choix_fichier_colonnes():
+	global filename_columns
+	filename_columns = tkinter.filedialog.askopenfilename(title="Ouvrir une image",filetypes=[('csv files','.csv'),('all files','.*')])
+	debut=-1
+	while filename_columns[debut] != "/":
+		debut-=1
+	text_column.set(filename_columns[debut+1:])
+
 
 def decompose(number):
 	# returns a generator of tuples (m, n1, r)
@@ -404,6 +422,18 @@ Choix1=Radiobutton(fenetre, text="Aléatoire",variable=fichier_var, value=1)
 Choix2=Radiobutton(fenetre, text="Fichier",variable=fichier_var, value=2)
 Choix1.pack()
 Choix2.pack()
+
+line_bouton = Button(fenetre,  text = 'Lignes',  command = choix_fichier_lignes)
+line_bouton.pack()
+text_line=StringVar()
+text_line.set("")
+Label(fenetre,textvariable=text_line).pack()
+
+column_bouton = Button(fenetre,  text = 'Colonnes',  command = choix_fichier_colonnes)
+column_bouton.pack()
+text_column=StringVar()
+text_column.set("")
+Label(fenetre,textvariable=text_column).pack()
 
 Reset_bouton = Button(fenetre,  text = 'Démarrer',  command = main)
 Reset_bouton.pack()
