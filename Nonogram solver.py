@@ -6,6 +6,8 @@ from time import time
 from random import random
 import os
 
+#Pour fichier unique : https://webpbn.com/export.cgi
+
 #Paramètres fenetre
 fenetre_hauteur=800
 fenetre_largeur=fenetre_hauteur
@@ -80,7 +82,7 @@ def initialisation_plateau():
 			if indice==[]:
 				indice=[0]
 			indices_colonnes.append(indice)
-	else:
+	elif fichier_var.get()=="2":
 		#path=os.path.realpath(__file__)
 		#fin=path.rfind('\\')
 
@@ -117,7 +119,37 @@ def initialisation_plateau():
 			if indice==[]:
 				indice=[0]
 			indices_colonnes.append(indice[:])
+	else:
+		with open(filename_unique) as fichier:
+			lignes=fichier.read()
+		indices_lignes=[]
+		indices_colonnes=[]
+		colonnes_temp=[]
+		lignes=lignes.split("\n")
+		nombre_indices_colonnes=lignes[0].count(",")
+		nombre_indices_lignes=lignes[-1].count(",")
+		for ligne in lignes:
+			if "," not in ligne:
+				continue
+			indice=[]
+			for symbole in ligne.split(','):
+				if symbole!="":
+					indice.append(int(symbole))
+			if indice==[]:
+				indice=[0]
+			if ligne.count(",") == nombre_indices_colonnes:
+				colonnes_temp.append(ligne.split(","))
+			else:
+				indices_lignes.append(indice[:])
+		for i in range(nombre_indices_lignes+1,nombre_indices_colonnes+1):
+			indice=[]
+			for liste in colonnes_temp:
+				if liste[i]!='':
+					indice.append(int(liste[i]))
+			indices_colonnes.append(indice[:])
 
+
+	if fichier_var.get()=="2" or fichier_var.get()=="3":
 		plateau_hauteur_var.set(len(indices_lignes))
 		plateau_largeur_var.set(len(indices_colonnes))
 		densite.set(sum(sum(i for i in ligne) for ligne in indices_lignes)/(len(indices_lignes)*len(indices_colonnes)))
@@ -157,6 +189,13 @@ def choix_fichier_colonnes():
 		debut-=1
 	text_column.set(filename_columns[debut+1:])
 
+def choix_fichier_unique():
+	global filename_unique
+	filename_unique = tkinter.filedialog.askopenfilename(title="Ouvrir une image",filetypes=[('csv files','.csv'),('all files','.*')])
+	debut=-1
+	while filename_unique[debut] != "/":
+		debut-=1
+	text_unique.set(filename_unique[debut+1:])
 
 def decompose(number):
 	# returns a generator of tuples (m, n1, r)
@@ -417,11 +456,13 @@ Canevas=Canvas(fenetre,height=fenetre_hauteur,width=fenetre_largeur)
 Canevas.pack(padx=5,pady=5,side=LEFT)
 
 fichier_var=StringVar()
-fichier_var.set(2)
+fichier_var.set(1)
 Choix1=Radiobutton(fenetre, text="Aléatoire",variable=fichier_var, value=1)
-Choix2=Radiobutton(fenetre, text="Fichier",variable=fichier_var, value=2)
+Choix2=Radiobutton(fenetre, text="Fichiers lignes et colonnes",variable=fichier_var, value=2)
+Choix3=Radiobutton(fenetre, text="Fichier unique",variable=fichier_var, value=3)
 Choix1.pack()
 Choix2.pack()
+Choix3.pack()
 
 line_bouton = Button(fenetre,  text = 'Lignes',  command = choix_fichier_lignes)
 line_bouton.pack()
@@ -434,6 +475,12 @@ column_bouton.pack()
 text_column=StringVar()
 text_column.set("")
 Label(fenetre,textvariable=text_column).pack()
+
+unique_bouton = Button(fenetre,  text = 'Fichier unique',  command = choix_fichier_unique)
+unique_bouton.pack()
+text_unique=StringVar()
+text_unique.set("")
+Label(fenetre,textvariable=text_unique).pack()
 
 Reset_bouton = Button(fenetre,  text = 'Démarrer',  command = main)
 Reset_bouton.pack()
