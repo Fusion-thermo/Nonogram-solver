@@ -9,7 +9,7 @@ import os
 #Pour fichier unique : https://webpbn.com/export.cgi
 
 #Paramètres fenetre
-fenetre_hauteur=800
+fenetre_hauteur=900
 fenetre_largeur=fenetre_hauteur
 origine_x=fenetre_largeur//2
 origine_y=fenetre_hauteur//2
