@@ -164,7 +164,7 @@ def initialisation_plateau():
 	for i in range(len(indices_colonnes)):
 		for j in range(len(indices_colonnes[i])):
 			Canevas.create_text(x0 + taille_case/2 + i*taille_case, y0 -14*(len(indices_colonnes[i])-j),text=str(indices_colonnes[i][j]))
-
+	
 	pos_init_lignes=[positions_initiales_possibles(i,source.shape[1]) for i in indices_lignes]
 	pos_init_colonnes=[positions_initiales_possibles(i,source.shape[0]) for i in indices_colonnes]
 
@@ -236,6 +236,7 @@ def arrang(n, k):
         i += 1
     return x
 
+memoire={}
 def positions_initiales_possibles(indice, longueur_ligne):
 	#si aucun bloc
 	if indice==[0]:
@@ -245,11 +246,9 @@ def positions_initiales_possibles(indice, longueur_ligne):
 	order=[]
 	for i in indice:
 		order.append([1]*i)
-		order.append([0])
-	order.pop()
 
-	#s'il n'y a qu'une seule position possible : techniquement pas nécessaire
-	nb_vides=longueur_ligne-(len(indice)-1)-sum(indice)
+	#s'il n'y a qu'une seule position possible : techniquement pas nécessaire mais évite de lancer combination()
+	nb_vides=longueur_ligne-(len(indice)-1)-sum(indice) #nombre de vides non libres (car au moins 1 entre chaque bloc)
 	if nb_vides==0:
 		chaine=""
 		for i in indice:
@@ -257,41 +256,42 @@ def positions_initiales_possibles(indice, longueur_ligne):
 			chaine+="0"
 		chaine=chaine[:-1]
 		return [chaine]
-
-	#Toutes les combinaisons possibles pour les 0, les nombres obtenus représentent le nombre de 0 libres à un seul endroit
-	#exemple : [3,1] signifie qu'on met trois 0 libres à un endroit et un 0 libre à un autre endroit.
-	
-	#choix de la méthode (arrangement ou combinaison) selon celle qui va le plus vite
-	# n1=longueur_ligne
-	# k1=longueur_ligne - len(order)
-	# n2=longueur_ligne+len(order)-sum([len(i) for i in order])
-	# k2=len(order)
-	# a=arrang(n1,k1)
-	# b=combin(n2,k2)
-	# print("arrangement",a,"combinaison",b)
-	# Conclusion : c'est combinaison qui est le plus rapide
 	
 	situations=[]
+	nb_indices_possibles=longueur_ligne-sum(len(i) for i in order)
+	#combinations() donne l'ordre de placement de chaque bloc de 1 dans
+	#une chaîne de 0 libres, par insertion dans la chaîne.
 	#positions des blocs
-	combinaison=combinations(range(longueur_ligne+len(order)-sum([len(i) for i in order])),len(order))
+	#combinaison=combinations(range(nb_indices_possibles+1),len(order))
+	#memoire[(nb_indices_possibles+1,len(order))] = [i for i in combinaison]
+	if (nb_indices_possibles+1,len(order)) not in memoire.keys():
+		combinaison=combinations(range(nb_indices_possibles+1),len(order))
+		memoire[(nb_indices_possibles+1,len(order))] = [i for i in combinaison]
+	combinaison=memoire[(nb_indices_possibles+1,len(order))][:]
+	#print(memoire[(nb_indices_possibles+1,len(order))])
+	#nb_indices_possibles représente le nombre maximal d'indices possibles pouvant accueillir les blocs de order.
+	#Par exemple longueur ligne=5 et order=[[1,1,1]]. Alors évidemment ce bloc ne peut pas être placé en 3 ou 4
+	# sinon il dépasserait. Donc nb_indices_possibles = 2
+	#Les positions (par exemple (3,4,7,10)) indiquent l'ordre des blocs
+	#dans la ligne. Ici le premier bloc ira en position 3, le deuxième ira
+	# en position 4, mais comme ajouter le premier bloc dans la liste "décale" les indices, il faut tenir compte du décalage.
+	#Ici, le deuxième bloc n'ira plus en position 4 mais 4 + nombre de "1" dans le premier bloc.
+	#Chaque bloc ainsi ajouté s'intercale entre deux "0" dans la chaîne. Donc les blocs ajoutent des nombres à la chaîne,
+	#jusqu'à atteindre naturellement longueur_ligne
+	#cette boucle for est la partie lente de l'initialisation, tout le reste est négligeable
 	for positions in combinaison:
-		situation="0"*(longueur_ligne+len(order)-sum([len(i) for i in order]))
+		#print(positions)
+		situation="0"*nb_indices_possibles
 		i=0
 		decalage=0
 		for position in positions:
-			situation=situation[:position+decalage] + ''.join(str(j) for j in order[i])+situation[position+decalage+1:]
-			decalage+=len(order[i])-1
+			situation=situation[:position+decalage] + ''.join(str(j) for j in order[i]) + situation[position+decalage:]
+			decalage+=len(order[i])
 			i+=1
 			
 		situations.append(situation)
-	chaines=[]
-	situations.sort()
-	for i in range(len(situations)-1):
-		if situations[i]!=situations[i+1]:
-			chaines.append(situations[i])
-	chaines.append(situations[-1])
 
-	return chaines
+	return situations
 
 
 def solveur(plateau,pos_init_lignes,pos_init_colonnes):
