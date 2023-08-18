@@ -4,9 +4,9 @@ import numpy as np
 from itertools import combinations
 from time import time
 from random import random
-import os
+from math import prod
 
-#Pour fichier unique : https://webpbn.com/export.cgi
+#Pour choisir un nonogram avec l'option fichier unique : https://webpbn.com/export.cgi
 
 #Paramètres fenetre
 fenetre_hauteur=900
@@ -35,7 +35,7 @@ def initialisation(rien):
 
 #initialisation_plateau
 def initialisation_plateau():
-	global indices_lignes,indices_colonnes, filename_lines,filename_columns
+	global indices_lignes,indices_colonnes, filename_lines,filename_columns, memoire
 	debut=time()
 	temps_initialisation.set("")
 	temps_resolution.set("")
@@ -83,9 +83,6 @@ def initialisation_plateau():
 				indice=[0]
 			indices_colonnes.append(indice)
 	elif fichier_var.get()=="2":
-		#path=os.path.realpath(__file__)
-		#fin=path.rfind('\\')
-
 		with open(filename_lines) as fichier:
 			lignes=fichier.read()
 		if "," in lignes:
@@ -164,7 +161,7 @@ def initialisation_plateau():
 	for i in range(len(indices_colonnes)):
 		for j in range(len(indices_colonnes[i])):
 			Canevas.create_text(x0 + taille_case/2 + i*taille_case, y0 -14*(len(indices_colonnes[i])-j),text=str(indices_colonnes[i][j]))
-	
+	memoire={}
 	pos_init_lignes=[positions_initiales_possibles(i,source.shape[1]) for i in indices_lignes]
 	pos_init_colonnes=[positions_initiales_possibles(i,source.shape[0]) for i in indices_colonnes]
 
@@ -236,8 +233,9 @@ def arrang(n, k):
         i += 1
     return x
 
-memoire={}
+
 def positions_initiales_possibles(indice, longueur_ligne):
+	global memoire
 	#si aucun bloc
 	if indice==[0]:
 		return ['0'*longueur_ligne]
@@ -261,14 +259,11 @@ def positions_initiales_possibles(indice, longueur_ligne):
 	nb_indices_possibles=longueur_ligne-sum(len(i) for i in order)
 	#combinations() donne l'ordre de placement de chaque bloc de 1 dans
 	#une chaîne de 0 libres, par insertion dans la chaîne.
-	#positions des blocs
-	#combinaison=combinations(range(nb_indices_possibles+1),len(order))
-	#memoire[(nb_indices_possibles+1,len(order))] = [i for i in combinaison]
+	#positions des blocs :
 	if (nb_indices_possibles+1,len(order)) not in memoire.keys():
 		combinaison=combinations(range(nb_indices_possibles+1),len(order))
 		memoire[(nb_indices_possibles+1,len(order))] = [i for i in combinaison]
 	combinaison=memoire[(nb_indices_possibles+1,len(order))][:]
-	#print(memoire[(nb_indices_possibles+1,len(order))])
 	#nb_indices_possibles représente le nombre maximal d'indices possibles pouvant accueillir les blocs de order.
 	#Par exemple longueur ligne=5 et order=[[1,1,1]]. Alors évidemment ce bloc ne peut pas être placé en 3 ou 4
 	# sinon il dépasserait. Donc nb_indices_possibles = 2
@@ -278,7 +273,6 @@ def positions_initiales_possibles(indice, longueur_ligne):
 	#Ici, le deuxième bloc n'ira plus en position 4 mais 4 + nombre de "1" dans le premier bloc.
 	#Chaque bloc ainsi ajouté s'intercale entre deux "0" dans la chaîne. Donc les blocs ajoutent des nombres à la chaîne,
 	#jusqu'à atteindre naturellement longueur_ligne
-	#cette boucle for est la partie lente de l'initialisation, tout le reste est négligeable
 	for positions in combinaison:
 		#print(positions)
 		situation="0"*nb_indices_possibles
@@ -294,92 +288,108 @@ def positions_initiales_possibles(indice, longueur_ligne):
 	return situations
 
 
-def solveur(plateau,pos_init_lignes,pos_init_colonnes):
+def solveur(plateau,ordres):
+	global pos_init_lignes,pos_init_colonnes
 	'''
 	0 : inconnu
 	1 : plein
 	2 : vide
 
 	'''
-	#lignes
-	for row in range(1,plateau.shape[0]+1):
-		#état actuel de la ligne
-		etat=""
-		for i in plateau[row-1:row,:][0]:
-			if i==1:
-				etat+="1"
-			elif i==2:
-				etat+="2"
-			else:
-				etat+="0"
-		#supprime les placements possibles qui ne sont pas en accord avec l'état actuel (càd s'ils prévoient un 0 là où il y a déjà un 1)
-		restant=pos_init_lignes[row-1][:]
-		for combi in pos_init_lignes[row-1]:
-			for i in range(len(combi)):
-				if (combi[i]=="0" and etat[i]=="1") or (combi[i]=="1" and etat[i]=="2"):
-					restant.remove(combi)
-					break
-		pos_init_lignes[row-1]=restant[:]
-		#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
-		#et si toutes prévoient 0 alors c'est un vide, marqué 2 sur le plateau.
-		probas=[0]*largeur_plateau
-		for combi in pos_init_lignes[row-1]:
-			for i in range(len(combi)):
-				probas[i]+=int(combi[i])
-		for i in range(len(probas)):
-			if probas[i]==len(pos_init_lignes[row-1]):
-				plateau[row-1,i]=1
-			elif probas[i]==0:
-				plateau[row-1,i]=2
+	for ordre in ordres:
+		if ordre[1]=="ligne":
 
+			#lignes
+			row=ordre[2] + 1
+			#for row in range(1,plateau.shape[0]+1):
+			#état actuel de la ligne
+			etat=""
+			for i in plateau[row-1:row,:][0]:
+				if i==1:
+					etat+="1"
+				elif i==2:
+					etat+="2"
+				else:
+					etat+="0"
+			#supprime les placements possibles qui ne sont pas en accord avec l'état actuel (càd s'ils prévoient un 0 là où il y a déjà un 1)
+			restant=pos_init_lignes[row-1][:]
+			for combi in pos_init_lignes[row-1]:
+				for i in range(len(combi)):
+					if (combi[i]=="0" and etat[i]=="1") or (combi[i]=="1" and etat[i]=="2"):
+						restant.remove(combi)
+						break
+			pos_init_lignes[row-1]=restant[:]
+			#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
+			#et si toutes prévoient 0 alors c'est un vide, marqué 2 sur le plateau.
+			probas=[0]*largeur_plateau
+			for combi in pos_init_lignes[row-1]:
+				for i in range(len(combi)):
+					probas[i]+=int(combi[i])
+			for i in range(len(probas)):
+				if probas[i]==len(pos_init_lignes[row-1]):
+					plateau[row-1,i]=1
+				elif probas[i]==0:
+					plateau[row-1,i]=2
+		else:
 
-	#colonnes
-	for column in range(1,plateau.shape[1]+1):
-		#état actuel de la ligne
-		etat=""
-		for i in plateau[:, column-1:column]:
-			if i[0]==1:
-				etat+="1"
-			elif i[0]==2:
-				etat+="2"
-			else:
-				etat+="0"
-		#supprime les placements possibles qui ne sont pas en accord avec l'état actuel (càd s'ils prévoient un 0 là où il y a un 1)
-		restant=pos_init_colonnes[column-1][:]
-		for combi in pos_init_colonnes[column-1]:
-			for i in range(len(combi)):
-				if (combi[i]=="0" and etat[i]=="1") or (combi[i]=="1" and etat[i]=="2"):
-					restant.remove(combi)
-					break
-		pos_init_colonnes[column-1]=restant[:]
-		#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
-		probas=[0]*hauteur_plateau
-		for combi in pos_init_colonnes[column-1]:
-			for i in range(len(combi)):
-				if combi[i]=="1":
-					probas[i]+=1
-		for i in range(len(probas)):
-			if probas[i]==len(pos_init_colonnes[column-1]):
-				plateau[i,column-1]=1
-			elif probas[i]==0:
-				plateau[i,column-1]=2
+			#colonnes
+			column=ordre[2] + 1
+			#for column in range(1,plateau.shape[1]+1):
+			#état actuel de la ligne
+			etat=""
+			for i in plateau[:, column-1:column]:
+				if i[0]==1:
+					etat+="1"
+				elif i[0]==2:
+					etat+="2"
+				else:
+					etat+="0"
+			#supprime les placements possibles qui ne sont pas en accord avec l'état actuel (càd s'ils prévoient un 0 là où il y a un 1)
+			restant=pos_init_colonnes[column-1][:]
+			for combi in pos_init_colonnes[column-1]:
+				for i in range(len(combi)):
+					if (combi[i]=="0" and etat[i]=="1") or (combi[i]=="1" and etat[i]=="2"):
+						restant.remove(combi)
+						break
+			pos_init_colonnes[column-1]=restant[:]
+			#parmi celles qui restent, si toutes prévoient un 1 à un même endroit alors on le met sur le plateau.
+			probas=[0]*hauteur_plateau
+			for combi in pos_init_colonnes[column-1]:
+				for i in range(len(combi)):
+					if combi[i]=="1":
+						probas[i]+=1
+			for i in range(len(probas)):
+				if probas[i]==len(pos_init_colonnes[column-1]):
+					plateau[i,column-1]=1
+				elif probas[i]==0:
+					plateau[i,column-1]=2
 
 	return plateau
 
 
-def jeu(plateau,pos_init_lignes,pos_init_colonnes):
+def jeu(plateau):
+	global pos_init_lignes,pos_init_colonnes
 	debut=time()
 	plateaux=[]
 	diff=plateau
+	#print(pos_init_lignes)
+	#pour savoir dans quel ordre parcourir le plateau :
+	#plus il y a de cases déjà remplies dans une ligne/colonne et plus il est rapide de calculer les
+	#autres possibilités. Donc on commence par les plus remplies pour faciliter les moins remplies
+	ordres=[]
+	for i in range(len(pos_init_lignes)):
+		ordres.append((len(pos_init_lignes[i]),"ligne",i))
+		ordres.append((len(pos_init_colonnes[i]),"colonnes",i))
+	ordres.sort()
 	while not diff.all():
 		plateaux.append(np.copy(plateau))
 		precedent=np.copy(plateau)
-		plateau=solveur(plateau,pos_init_lignes,pos_init_colonnes)
+		plateau=solveur(plateau,ordres)
 		diff=plateau==precedent
 
 
 	print("Résolution effectuée en {} secondes".format(round(time()- debut,3)))
-	temps_resolution.set("Résolu en\n"+str(round(time()-debut,3))+" s")
+	fin=time()
 
 	if np.count_nonzero(plateau == 0) >0:
 		complet=False
@@ -387,8 +397,10 @@ def jeu(plateau,pos_init_lignes,pos_init_colonnes):
 		complet=True
 	if not complet:
 		print("Il y a plusieurs solutions équivalentes possibles\n\n")
+		temps_resolution.set("Résolu en\n"+str(round(fin-debut,3))+" s\nAu moins "+str(max([len(i) for i in pos_init_lignes]))+" possibilités")
 	else:
 		print("Solution trouvée !\n\n")
+		temps_resolution.set("Résolu en\n"+str(round(fin-debut,3))+" s")
 
 	return plateaux, plateaux[:]
 
@@ -441,9 +453,9 @@ def dessin_etape_unique(numero):
 			Canevas.create_text(x0 + taille_case/2 + i*taille_case, y0 -14*(len(indices_colonnes[i])-j),text=str(indices_colonnes[i][j]))
 
 def main():
-	global plateaux,copie_plateau
+	global plateaux,copie_plateau,pos_init_lignes,pos_init_colonnes
 	plateau,pos_init_lignes,pos_init_colonnes=initialisation_plateau()
-	plateaux,copie_plateau=jeu(plateau,pos_init_lignes,pos_init_colonnes)
+	plateaux,copie_plateau=jeu(plateau)
 	scale_etape.config(to=len(plateaux))
 	if int(etapes.get())==2:
 		dessin(plateaux[-1])
