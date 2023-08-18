@@ -28,7 +28,7 @@ def initialisation(rien):
 	#coin supérieur gauche du plateau
 	x0=origine_x-largeur_plateau*taille_case/2
 	y0=origine_y-hauteur_plateau*taille_case/2
-	if taux_remplissage<0.6:
+	if taux_remplissage<0.6 and largeur_plateau*hauteur_plateau>400:
 		warning.set("Attention !")
 	else:
 		warning.set("")
