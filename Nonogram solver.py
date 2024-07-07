@@ -4,7 +4,6 @@ import numpy as np
 from itertools import combinations
 from time import time
 from random import random
-from math import prod
 
 #Pour choisir un nonogram avec l'option fichier unique : https://webpbn.com/export.cgi
 
